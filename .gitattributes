@@ -1,1 +1,3 @@
-*.asm linguist-vendored  # Ignore .asm files language
+*.asm linguist-vendored
+sample_files/* linguist-vendored
+./sample_files/* linguist-vendored
