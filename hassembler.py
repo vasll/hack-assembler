@@ -7,7 +7,6 @@ argparser = ArgumentParser("hassembler")
 argparser.add_argument("file", help="path of the input .asm file", type=str)
 argparser.add_argument("outfile", help="path of the output .bin file", type=str, default="./out.bin", nargs='?')
 args = argparser.parse_args()
-binary_output = ""  # Save the output to be written later to a .bin file
 
 # Exception classes
 class AddressOverflowException(Exception):
