@@ -1,12 +1,23 @@
 """ Assembler for the hack machine from nand2tetris.org. """
 from argparse import ArgumentParser
-
+from sys import stderr
 
 # Load the file from program args
 argparser = ArgumentParser("hassembler")
-argparser.add_argument("file", help="path of the .asm file", type=str)
+argparser.add_argument("file", help="path of the input .asm file", type=str)
+argparser.add_argument("outfile", help="path of the output .bin file", type=str, default="./out.bin", nargs='?')
 args = argparser.parse_args()
 binary_output = ""  # Save the output to be written later to a .bin file
+
+# Exception classes
+class AddressOverflowException(Exception):
+    pass
+
+class ParseException(Exception):
+    pass
+
+class SymbolNotFoundException(Exception):
+    pass
 
 # Symbols
 comp_symbols = {    # C instruction symbols
@@ -42,6 +53,11 @@ variable_symbols = {}
 label_symbols = {}
 
 # Functions
+def print_err(str_exception: str, line_count: int, line: str):
+    print(f"\n{str_exception} at line {line_count} in {args.file}", file=stderr)
+    print(f"line {line_count}: {line}", file=stderr)
+    exit(-1)
+
 def remove_comments(line: str) -> str:
     """ Removes single-line comments from a string """
     if "//" in line:
@@ -67,8 +83,7 @@ def parse_a_instruction(line: str) -> str:
         return f"0{variable_symbols[instruction]:015b}"
     
     if address > 32768:
-        print(f"ERROR: Address is too big -> {line}")
-        exit()
+        raise AddressOverflowException
     
     binary_instruction = f"0{address:015b}"  # Convert the int to 15-bit binary string, add a 0 at the start
     return binary_instruction
@@ -82,8 +97,7 @@ def parse_c_instruction(line: str) -> str:
         comp = instruction[1]
 
         if dest not in dest_symbols or comp not in comp_symbols:    # Check dest field
-            print(f"ERROR: Wrong C instruction format -> {line}")
-            exit()
+            raise SymbolNotFoundException
 
         return f"111{comp_symbols[comp]:07b}{dest_symbols[dest]:03b}000"
 
@@ -94,18 +108,14 @@ def parse_c_instruction(line: str) -> str:
         jump = instruction[1]
 
         if jump not in jump_symbols or comp not in comp_symbols:    # Check dest field
-            print(f"ERROR: Wrong C instruction format -> {line}")
-            exit()
+            raise SymbolNotFoundException
         
         return f"111{comp_symbols[comp]:07b}000{jump_symbols[jump]:03b}"
     
-    print(f"ERROR: Unknown C instruction -> {line}")
-    exit()
+    raise ParseException
 
 
 # Main program - Parsing of the file line-by-line
-output = ""
-
 with open(args.file, 'r') as file:  # Read file into "lines" variable
     lines = file.readlines()
 
@@ -126,18 +136,29 @@ for line in lines:
 # Second pass: Find variable symbols
 raw_line_count = 0
 instruction_number = 0
+output = ""  # File output
 
 for line in lines:
-    line = remove_comments(line.strip())    # Strip and remove comments
-    if line == "" or line.startswith("(") and line.endswith(")"):  # Skip empty and label lines
+    strp_line = remove_comments(line.strip())    # Strip and remove comments
+    if strp_line == "" or strp_line.startswith("(") and strp_line.endswith(")"):  # Skip empty and label lines
         raw_line_count += 1
         continue
-    
-    if line.startswith("@"):
-        print(f"{parse_a_instruction(line)} -> {line}")
-    else:
-        print(f"{parse_c_instruction(line)} -> {line}")
-        pass
+    try:
+        if strp_line.startswith("@"):
+            output += f"{parse_a_instruction(strp_line)}\n"
+        else:
+            output += f"{parse_c_instruction(strp_line)}\n"
+    except AddressOverflowException:
+        print_err("AddressOverflowException", raw_line_count, line)
+    except SymbolNotFoundException:
+        print_err("SymbolNotFoundException", raw_line_count, line)
+    except ParseException:
+        print_err("ParseException", raw_line_count, line)
+    except Exception:
+        print_err("Exception", raw_line_count, line)
     
     raw_line_count += 1
     instruction_number += 1
+
+with open(args.outfile, 'w') as outfile:
+    outfile.write(output)
