@@ -1,5 +1,5 @@
 # hack-assembler
-A hack machine language assembler made for the [www.nand2tetris.org](nand2tetris) course with python.
+A hack machine language assembler made for the [nand2tetris](https://www.nand2tetris.org) course with python.
 
 # Usage
 ```powershell
