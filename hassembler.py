@@ -53,9 +53,8 @@ label_symbols = {}
 
 # Functions
 def print_err(str_exception: str, line_count: int, line: str):
-    print(f"\n{str_exception} at line {line_count} in {args.file}", file=stderr)
-    print(f"line {line_count}: {line}", file=stderr)
-    exit(-1)
+    print(f"┌{str_exception} at line {line_count}", file=stderr)
+    print(f"│ line {line_count}: '{line.strip()}'", file=stderr)
 
 def remove_comments(line: str) -> str:
     """ Removes single-line comments from a string """
@@ -136,6 +135,7 @@ for line in lines:
 raw_line_count = 0
 instruction_number = 0
 output = ""  # File output
+error_count = 0
 
 for line in lines:
     strp_line = remove_comments(line.strip())    # Strip and remove comments
@@ -149,15 +149,26 @@ for line in lines:
             output += f"{parse_c_instruction(strp_line)}\n"
     except AddressOverflowException:
         print_err("AddressOverflowException", raw_line_count, line)
+        error_count += 1
     except SymbolNotFoundException:
         print_err("SymbolNotFoundException", raw_line_count, line)
+        error_count += 1
     except ParseException:
         print_err("ParseException", raw_line_count, line)
+        error_count += 1
     except Exception:
         print_err("Exception", raw_line_count, line)
+        error_count += 1
     
     raw_line_count += 1
     instruction_number += 1
 
+# Decide whether to write the output to file or quit if there are errors
+if error_count > 0:
+    print(f"Found {error_count} errors.")
+    exit(-1)
+
+print("Found 0 errors")
 with open(args.outfile, 'w') as outfile:
     outfile.write(output)
+print(f"File written to {args.outfile}.")
