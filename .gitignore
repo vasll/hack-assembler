@@ -1,3 +1,2 @@
-# Ignore .bin output files in root folder
-/out.bin
+# Ignore .bin output files
 /*.bin

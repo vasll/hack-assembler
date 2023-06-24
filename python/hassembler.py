@@ -175,4 +175,4 @@ if error_count > 0:
 with open(args.outfile, 'w') as outfile:
     outfile.write(output)
 
-print(f"File written to '{args.outfile}'.\nTook {(time.time() - start_time)} seconds.")
+print(f"File written to '{args.outfile}'.\nTook {(time.time() - start_time):.7f} seconds.")
