@@ -1,6 +1,10 @@
 """ Assembler for the hack machine from nand2tetris.org. """
 from argparse import ArgumentParser
 from sys import stderr
+import time
+
+# Keep track of execution time
+start_time = time.time()
 
 # Load the file from program args
 argparser = ArgumentParser("hassembler")
@@ -165,10 +169,10 @@ for line in lines:
 
 # Decide whether to write the output to file or quit if there are errors
 if error_count > 0:
-    print(f"Found {error_count} errors.")
+    print(f"Found {error_count} errors. Exiting")
     exit(-1)
 
-print("Found 0 errors")
 with open(args.outfile, 'w') as outfile:
     outfile.write(output)
-print(f"File written to {args.outfile}.")
+
+print(f"File written to '{args.outfile}'.\nTook {(time.time() - start_time)} seconds.")
