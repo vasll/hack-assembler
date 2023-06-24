@@ -1,10 +1,14 @@
 package main
 
-import "fmt"
-import "time"
-import "strings"
-import "strconv"
-// import "github.com/docopt/docopt.go"
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+	"github.com/docopt/docopt.go"
+)
 
 /* Docopt args usage */
 const usage = `
@@ -19,32 +23,32 @@ Options:
 
 /* Symbols */
 var compSymbols map[string]int = map[string]int{ // C instruction symbols
-	// a=0
-	"0":    0b101010, "1": 0b111111, "-1": 0b111010, "D": 0b001100,
-	"A":    0b110000, "!D": 0b001101, "!A": 0b110001, "-D": 0b001111,
-	"-A":   0b110011, "D+1": 0b011111, "A+1": 0b110111, "D-1": 0b001110,
-	"A-1":  0b110010, "D+A": 0b000010, "D-A": 0b010011, "A-D": 0b000111,
-	"D&A":  0b000000, "D|A": 0b010101,
-	// a=1
-	"M":    0b111000, "!M": 0b111001, "-M": 0b111011, "M+1": 0b111111,
-	"M-1":  0b111010, "D+M": 0b100001, "D-M": 0b101000, "M-D": 0b100011,
-	"D&M":  0b100000, "D|M": 0b101101,
+    // a=0
+    "0": 42,    "1": 63,    "-1": 58,   "D": 12,
+    "A": 48,    "!D": 13,   "!A": 49,   "-D": 15,
+    "-A": 51,   "D+1": 31,  "A+1": 55,  "D-1": 14,
+    "A-1": 50,  "D+A": 2,   "D-A": 19,  "A-D": 7,
+    "D&A": 0,   "D|A": 21,
+    // a=1
+    "M": 112,   "!M": 113, "-M": 115,  "M+1": 119,
+    "M-1": 114, "D+M": 66, "D-M": 83, "M-D": 71,
+    "D&M": 64,  "D|M": 85,
 }
 var jumpSymbols map[string]int = map[string]int{
-	"JGT": 0b001, "JEQ": 0b010, "JGE": 0b011, "JLT": 0b100,
-	"JNE": 0b101, "JLE": 0b0110, "JMP": 0b111, "": 0b0,
+    "JGT": 1,   "JEQ": 2,   "JGE": 3,   "JLT": 4,
+    "JNE": 5,   "JLE": 6,   "JMP": 7,   "": 0,
 }
 var destSymbols map[string]int = map[string]int{
-	"M": 0b001, "D": 0b010, "MD": 0b011, "A": 0b100,
-	"AM": 0b101, "AD": 0b110, "AMD": 0b111,
+    "M": 1,     "D": 2,     "MD": 3,    "A": 4,
+    "AM": 5,    "AD": 6,    "AMD": 7,
 }
 var predefinedSymbols map[string]int = map[string]int{ // A instruction symbols
-	"R0": 0b0000, "R1": 0b0001, "R2": 0b0010, "R3": 0b0011,
-	"R4": 0b0100, "R5": 0b0101, "R6": 0b0110, "R7": 0b0111,
-	"R8": 0b1000, "R9": 0b1001, "R10": 0b1010, "R11": 0b1011,
-	"R12": 0b1100, "R13": 0b1101, "R14": 0b1110, "R15": 0b1111,
-	"SCREEN": 0b100000000000000, "KBD": 0b110000000000000, "SP": 0b0,
-	"LCL": 0b001, "ARG": 0b010, "THIS": 0b011, "THAT": 0b100,
+    "R0": 0,    "R1": 1,    "R2": 2,    "R3": 3,  
+    "R4": 4,    "R5": 5,    "R6": 6,    "R7": 7,   
+    "R8": 8,    "R9": 9,    "R10": 10,  "R11": 11, 
+    "R12": 12,  "R13": 13,  "R14": 14,  "R15": 15, 
+    "SCREEN": 16384,    "KBD": 24576,   "SP":0,  
+    "LCL": 1,   "ARG": 2,   "THIS": 3,  "THAT": 4,
 }
 var variableSymbols map[string]int = map[string]int{}
 var labelSymbols map[string]int = map[string]int{}
@@ -52,10 +56,11 @@ var labelSymbols map[string]int = map[string]int{}
 // Functions
 
 /* Removes comments from a string and applies strings.TrimSpace() to it */
-func removeComments(s* string) {
-	if strings.ContainsAny(*s, "//") {
-		*s = strings.TrimSpace(strings.Split(*s, "//")[0])
+func removeComments(s string) string{
+	if strings.ContainsAny(s, "//") {
+		return strings.TrimSpace(strings.Split(s, "//")[0])
 	}
+	return strings.TrimSpace(s)
 }
 
 /* Returns: 16-bit binary representation of an A instruction parsed from a string */
@@ -80,7 +85,7 @@ func parseAinstruction(line string) (string, error) {
 	}
 
 	if address > 32768 {
-		return "", fmt.Errorf("AddressOverflow: Address is bigger than 32768")
+		return "", fmt.Errorf("AddressOverflow")
 	}
 
 	return fmt.Sprintf("0%015b", address), nil
@@ -96,10 +101,10 @@ func parseCinstruction(line string) (string, error) {
 
 		// Check if given dest and comp fields exists
 		if _, ok := destSymbols[dest]; !ok {
-			return "", fmt.Errorf("SymbolNotFound: Dest field doesn't exist")
+			return "", fmt.Errorf("SymbolNotFound")
 		}
 		if _, ok := compSymbols[comp]; !ok {
-			return "", fmt.Errorf("SymbolNotFound: Comp field doesn't exist")
+			return "", fmt.Errorf("SymbolNotFound")
 		}
 		return fmt.Sprintf("111%07b%03b000", compSymbols[comp], destSymbols[dest]), nil
 	}
@@ -112,24 +117,110 @@ func parseCinstruction(line string) (string, error) {
 
 		// Check if given comp and jump fields exists
 		if _, ok := compSymbols[comp]; !ok {
-			return "", fmt.Errorf("SymbolNotFound: Comp field doesn't exist")
+			return "", fmt.Errorf("SymbolNotFound")
 		}
 		if _, ok := jumpSymbols[jump]; !ok {
-			return "", fmt.Errorf("SymbolNotFound: Jump field doesn't exist")
+			return "", fmt.Errorf("SymbolNotFound")
 		}
 		return fmt.Sprintf("111%07b000%03b", compSymbols[comp], jumpSymbols[jump]), nil
 	}
 
-	return "", fmt.Errorf("ParseError: Couldn't parse C instruction")
+	return "", fmt.Errorf("ParseError")
 }
 
 // Main
 func main() {
-	startTime := time.Now()
+	startTime := time.Now()	// Keep track of execution time
 	
-	// Load cli args and file
-	// TODO
-	// args, _ := docopt.ParseDoc(usage)
+	// Load cli args
+	args, _ := docopt.ParseDoc(usage)
 
-	fmt.Printf("Took %.7f seconds.", time.Since(startTime).Seconds())
+	// Read file into "lines" array
+	file, file_err := os.Open(args["<file>"].(string))
+	if file_err != nil {
+		fmt.Printf("Error with opnening file.")
+		os.Exit(-1)
+	}
+
+	scanner := bufio.NewScanner(file)
+	var lines []string = []string{}
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	file.Close()
+
+	// First pass: Find label symbols
+	instructionNumber := 0
+	for _, line := range lines {
+		line = removeComments(line)
+		if line == "" {	// Skip empty lines
+			continue
+		}
+		if strings.HasPrefix(line, "(") && strings.HasSuffix(line, ")") {
+			label := strings.ReplaceAll(line, "(", "")
+			label = strings.ReplaceAll(label, ")", "")
+			labelSymbols[label] = instructionNumber
+		}
+		instructionNumber += 1
+	}
+
+	// Second pass: Find variable symbols
+	var outInstructions []string = []string{}
+	rawLineCount := 0
+	errorCount := 0
+
+	for _, line := range lines {
+		strpLine := removeComments(line)
+		if strpLine == "" || strings.HasPrefix(strpLine, "(") && strings.HasSuffix(strpLine, ")"){
+			rawLineCount += 1
+			continue
+		}
+
+		if strings.HasPrefix(strpLine, "@"){
+			instr, err := parseAinstruction(strpLine)
+			
+			if err != nil {
+				errorCount += 1
+				fmt.Printf("┌%s at line %d\n", err.Error(), rawLineCount)
+				fmt.Printf("│ line %d: '%s'\n", rawLineCount, strings.TrimSpace(line))
+				continue
+			}
+
+			outInstructions = append(outInstructions, instr)
+		} else {
+			instr, err := parseCinstruction(strpLine)
+			
+			if err != nil {
+				errorCount += 1
+				fmt.Printf("┌%s at line %d\n", err.Error(), rawLineCount)
+				fmt.Printf("│ line %d: '%s'\n", rawLineCount, strings.TrimSpace(line))
+				continue
+			}
+
+			outInstructions = append(outInstructions, instr)
+		}
+		rawLineCount += 1
+	}
+
+	// Decide whether to write the output to file or quit if there are errors
+	if errorCount > 0 {
+		fmt.Printf("Found %d errors. Exiting\n", errorCount)
+		os.Exit(-1)
+	}
+
+	// open output file
+	outfile, outfile_err := os.Create(args["<outfile>"].(string))
+	if outfile_err != nil {
+		fmt.Printf("Error with opnening output file.")
+		os.Exit(-1)
+	}
+	defer file.Close()
+
+	for _, instruction := range outInstructions{
+		outfile.WriteString(instruction)
+		outfile.WriteString("\n")
+	}
+
+	fmt.Printf("File written to '%s'\n", args["<outfile>"].(string))
+	fmt.Printf("Took %.7f seconds.\n", time.Since(startTime).Seconds())
 }
