@@ -86,6 +86,43 @@ func parseAinstruction(line string) (string, error) {
 	return fmt.Sprintf("0%015b", address), nil
 }
 
+/* Returns: 16-bit binary representation of a C instruction parsed from a string */
+func parseCinstruction(line string) (string, error) {
+	// Instruction of type: "dest=comp"
+	if strings.ContainsAny(line, "="){
+		instruction := strings.Split(line, "=")
+		dest := instruction[0]
+		comp := instruction[1]
+
+		// Check if given dest and comp fields exists
+		if _, ok := destSymbols[dest]; !ok {
+			return "", fmt.Errorf("SymbolNotFound: Dest field doesn't exist")
+		}
+		if _, ok := compSymbols[comp]; !ok {
+			return "", fmt.Errorf("SymbolNotFound: Comp field doesn't exist")
+		}
+		return fmt.Sprintf("111%07b%03b000", compSymbols[comp], destSymbols[dest]), nil
+	}
+
+	// Instruction of type: "comp;jump"
+	if strings.ContainsAny(line, ";"){
+		instruction := strings.Split(line, ";")
+		comp := instruction[0]
+		jump := instruction[1]
+
+		// Check if given comp and jump fields exists
+		if _, ok := compSymbols[comp]; !ok {
+			return "", fmt.Errorf("SymbolNotFound: Comp field doesn't exist")
+		}
+		if _, ok := jumpSymbols[jump]; !ok {
+			return "", fmt.Errorf("SymbolNotFound: Jump field doesn't exist")
+		}
+		return fmt.Sprintf("111%07b000%03b", compSymbols[comp], jumpSymbols[jump]), nil
+	}
+
+	return "", fmt.Errorf("ParseError: Couldn't parse C instruction")
+}
+
 // Main
 func main() {
 	startTime := time.Now()
