@@ -118,54 +118,52 @@ def parse_c_instruction(line: str) -> str:
 
 
 # Main program - Parsing of the file line-by-line
-with open(args.file, 'r') as file:  # Read file into "lines" variable
-    lines = file.readlines()
+with open(args.file, 'r') as file:
+    # First pass: Find label symbols
+    for line in file:
+        instruction_number = 0
 
-# First pass: Find label symbols
-instruction_number = 0
+        line = remove_comments(line.strip())    # Strip and remove comment
+        if line == "":  # Skip empty lines
+            continue
 
-for line in lines:
-    line = remove_comments(line.strip())    # Strip and remove comment
-    if line == "":  # Skip empty lines
-        continue
+        if line.startswith("(") and line.endswith(")"):
+            label = line.strip("()")
+            label_symbols[label] = instruction_number
 
-    if line.startswith("(") and line.endswith(")"):
-        label = line.strip("()")
-        label_symbols[label] = instruction_number
-
-    instruction_number += 1
-
-# Second pass: Find variable symbols
-raw_line_count = 0
-instruction_number = 0
-output = ""  # File output
-error_count = 0
-
-for line in lines:
-    strp_line = remove_comments(line.strip())    # Strip and remove comments
-    if strp_line == "" or strp_line.startswith("(") and strp_line.endswith(")"):  # Skip empty and label lines
-        raw_line_count += 1
-        continue
-    try:
-        if strp_line.startswith("@"):
-            output += f"{parse_a_instruction(strp_line)}\n"
-        else:
-            output += f"{parse_c_instruction(strp_line)}\n"
-    except AddressOverflowException:
-        print_err("AddressOverflowException", raw_line_count, line)
-        error_count += 1
-    except SymbolNotFoundException:
-        print_err("SymbolNotFoundException", raw_line_count, line)
-        error_count += 1
-    except ParseException:
-        print_err("ParseException", raw_line_count, line)
-        error_count += 1
-    except Exception:
-        print_err("Exception", raw_line_count, line)
-        error_count += 1
+        instruction_number += 1
     
-    raw_line_count += 1
-    instruction_number += 1
+    file.seek(0)  # Rewind file to start
+
+    # Second pass: Find variable symbols
+    raw_line_count = 0
+    output = ""  # File output
+    error_count = 0
+
+    for line in file:
+        strp_line = remove_comments(line.strip())    # Strip and remove comments
+        if strp_line == "" or strp_line.startswith("(") and strp_line.endswith(")"):  # Skip empty and label lines
+            raw_line_count += 1
+            continue
+        try:
+            if strp_line.startswith("@"):
+                output += f"{parse_a_instruction(strp_line)}\n"
+            else:
+                output += f"{parse_c_instruction(strp_line)}\n"
+        except AddressOverflowException:
+            print_err("AddressOverflowException", raw_line_count, line)
+            error_count += 1
+        except SymbolNotFoundException:
+            print_err("SymbolNotFoundException", raw_line_count, line)
+            error_count += 1
+        except ParseException:
+            print_err("ParseException", raw_line_count, line)
+            error_count += 1
+        except Exception:
+            print_err("Exception", raw_line_count, line)
+            error_count += 1
+        
+        raw_line_count += 1
 
 # Decide whether to write the output to file or quit if there are errors
 if error_count > 0:
