@@ -155,7 +155,9 @@ func main() {
 		}
 		instructionNumber += 1
 	}
-	file.Seek(0, 0)
+
+	file.Seek(0, 0)	// Rewind file to start
+	scanner = bufio.NewScanner(file)
 
 	// Second pass: Find variable symbols
 	var outInstructions []string = []string{}
@@ -163,7 +165,7 @@ func main() {
 	errorCount := 0
 
 	for scanner.Scan() {	// Read file line by line
-		line := scanner.Text()	
+		line := scanner.Text()
 		strpLine := removeComments(line)
 		if strpLine == "" || strings.HasPrefix(strpLine, "(") && strings.HasSuffix(strpLine, ")"){
 			rawLineCount += 1
