@@ -1,4 +1,4 @@
-module github.com/vasll/hack_assembler
+module github.com/vasll/hack_assembler/go
 
 go 1.20
 
