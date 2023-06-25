@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 	"github.com/docopt/docopt.go"
+	"github.com/vasll/hack_assembler/go"
 )
 
 /* Docopt args usage */
@@ -130,7 +131,7 @@ func parseCinstruction(line string) (string, error) {
 // Main
 func main() {
 	startTime := time.Now()	// Keep track of execution time
-	
+
 	// Load cli args
 	args, _ := docopt.ParseDoc(usage)
 
@@ -140,13 +141,13 @@ func main() {
 		fmt.Printf("Error with opnening file.")
 		os.Exit(-1)
 	}
-	scanner := bufio.NewScanner(file)
+	fileScanner := bufio.NewScanner(file)
 
 	// First pass: Find label symbols
 	instructionNumber := 0
 	
-	for scanner.Scan() {	// Read file line by line
-		line := removeComments(scanner.Text())	
+	for fileScanner.Scan() {	// Read file line by line
+		line := removeComments(fileScanner.Text())	
 		if line == "" {	continue }	// Skip empty lines
 		if strings.HasPrefix(line, "(") && strings.HasSuffix(line, ")") {
 			label := strings.ReplaceAll(line, "(", "")
@@ -157,15 +158,15 @@ func main() {
 	}
 
 	file.Seek(0, 0)	// Rewind file to start
-	scanner = bufio.NewScanner(file)
+	fileScanner = bufio.NewScanner(file)
 
 	// Second pass: Find variable symbols
 	var outInstructions []string = []string{}
 	rawLineCount := 0
 	errorCount := 0
 
-	for scanner.Scan() {	// Read file line by line
-		line := scanner.Text()
+	for fileScanner.Scan() {	// Read file line by line
+		line := fileScanner.Text()
 		strpLine := removeComments(line)
 		if strpLine == "" || strings.HasPrefix(strpLine, "(") && strings.HasSuffix(strpLine, ")"){
 			rawLineCount += 1
@@ -198,7 +199,7 @@ func main() {
 		rawLineCount += 1
 	}
 	file.Close()
-
+	
 	// Decide whether to write the output to file or quit if there are errors
 	if errorCount > 0 {
 		fmt.Printf("Found %d errors. Exiting\n", errorCount)
@@ -211,12 +212,14 @@ func main() {
 		fmt.Printf("Error with opnening output file.")
 		os.Exit(-1)
 	}
-	defer file.Close()
+	outfileWriter := bufio.NewWriter(outfile)
 
-	for _, instruction := range outInstructions{
-		outfile.WriteString(instruction)
-		outfile.WriteString("\n")
+	// write to file
+	for _, instruction := range outInstructions {
+		outfileWriter.WriteString(fmt.Sprintf("%s\n", instruction))
 	}
+	outfileWriter.Flush()
+	outfile.Close()
 
 	fmt.Printf("File written to '%s'\n", args["<outfile>"].(string))
 	fmt.Printf("Took %.7f seconds.\n", time.Since(startTime).Seconds())
