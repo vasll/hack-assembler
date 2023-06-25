@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 	"github.com/docopt/docopt.go"
-	"github.com/vasll/hack_assembler/go"
 )
 
 /* Docopt args usage */
