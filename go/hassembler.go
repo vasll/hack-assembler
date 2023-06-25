@@ -54,7 +54,6 @@ var variableSymbols map[string]int = map[string]int{}
 var labelSymbols map[string]int = map[string]int{}
 
 // Functions
-
 /* Removes comments from a string and applies strings.TrimSpace() to it */
 func removeComments(s string) string{
 	if strings.ContainsAny(s, "//") {
@@ -135,27 +134,20 @@ func main() {
 	// Load cli args
 	args, _ := docopt.ParseDoc(usage)
 
-	// Read file into "lines" array
+	// Open file for reading
 	file, file_err := os.Open(args["<file>"].(string))
 	if file_err != nil {
 		fmt.Printf("Error with opnening file.")
 		os.Exit(-1)
 	}
-
 	scanner := bufio.NewScanner(file)
-	var lines []string = []string{}
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	file.Close()
 
 	// First pass: Find label symbols
 	instructionNumber := 0
-	for _, line := range lines {
-		line = removeComments(line)
-		if line == "" {	// Skip empty lines
-			continue
-		}
+	
+	for scanner.Scan() {	// Read file line by line
+		line := removeComments(scanner.Text())	
+		if line == "" {	continue }	// Skip empty lines
 		if strings.HasPrefix(line, "(") && strings.HasSuffix(line, ")") {
 			label := strings.ReplaceAll(line, "(", "")
 			label = strings.ReplaceAll(label, ")", "")
@@ -163,13 +155,15 @@ func main() {
 		}
 		instructionNumber += 1
 	}
+	file.Seek(0, 0)
 
 	// Second pass: Find variable symbols
 	var outInstructions []string = []string{}
 	rawLineCount := 0
 	errorCount := 0
 
-	for _, line := range lines {
+	for scanner.Scan() {	// Read file line by line
+		line := scanner.Text()	
 		strpLine := removeComments(line)
 		if strpLine == "" || strings.HasPrefix(strpLine, "(") && strings.HasSuffix(strpLine, ")"){
 			rawLineCount += 1
@@ -201,6 +195,7 @@ func main() {
 		}
 		rawLineCount += 1
 	}
+	file.Close()
 
 	// Decide whether to write the output to file or quit if there are errors
 	if errorCount > 0 {
